@@ -1,0 +1,17 @@
+/.vs
+/BlazorAppDemo/.vs/BlazorAppDemo/v17/.suo
+*.vsidx
+/BlazorAppDemo/.vs/BlazorAppDemo/DesignTimeBuild/.dtbcache.v2
+/BlazorAppDemo/.vs/BlazorAppDemo/v17/.futdcache.v2
+/BlazorAppDemo/.vs/BlazorAppDemo/v17/DocumentLayout.json
+/.vs/VSWorkspaceState.json
+/BlazorAppDemo/.vs/ProjectEvaluation/blazorappdemo.metadata.v8.bin
+/BlazorAppDemo/.vs/ProjectEvaluation/blazorappdemo.projects.v8.bin
+/BlazorAppDemo/.vs/ProjectEvaluation/blazorappdemo.strings.v8.bin
+**/obj/**
+**/bin/**
+/BlazorAppDemo/BlazorAppDemo/obj/project.nuget.cache
+/BlazorAppDemo/BlazorAppDemo/obj/project.assets.json
+/BlazorAppDemo/BlazorAppDemo/obj/BlazorAppDemo.csproj.nuget.dgspec.json
+/BlazorAppDemo/BlazorAppDemo/obj/Debug/net8.0/BlazorAppDemo.AssemblyInfoInputs.cache
+/BlazorAppDemo/BlazorAppDemo/obj/Debug/net8.0/BlazorAppDemo.AssemblyInfo.cs
