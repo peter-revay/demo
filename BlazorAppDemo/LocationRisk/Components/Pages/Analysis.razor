@@ -1,0 +1,71 @@
+﻿@page "/analysis"
+@using LocationRisk.Components.Layout
+@rendermode InteractiveServer
+
+
+<PageTitle>Analysis</PageTitle>
+
+
+<h3>Ulozene vysledky</h3>
+<br />
+
+ <div style="max-height:300px;max-width:800px;overflow-y:scroll; margin:20px">
+    <table width=80%>
+        @foreach (var result in analysis.Results)
+        {
+            <tr @onclick="() => SetDistance(result.Distance, result.Title)">
+                <AnalysedResult ImageUrl="Images/Dom.svg"
+                                Title=@result.Title
+                                Text=@result.Text
+                                Status=@result.Status />
+            </tr>
+        
+        }
+    </table>
+</div><br/>
+
+
+
+@if (analysis.distance != -1){
+
+    <h3 style="margin:20px;margin-bottom: 20px;">@currentTitle</h3>
+    <div width="100%" style="margin-bottom: 40px;">
+        <img id="image" src="Images/BlackDot.png" style="position:fixed;max-width:80px;@CalculateImagePosition()" width="10%" />
+    </div>
+    
+
+    <GradientBar></GradientBar>
+    <span style="margin:10px">Vzdialenost od najblizsieho bodu : @analysis.distance m.</span>
+}
+
+@code {
+    private string currentTitle;
+
+    private Model.Home home = Model.Home.Instance;
+    private Model.Analysis analysis = Model.Analysis.Instance;
+
+    private void SetDistance(int dist, string title)
+    {
+        analysis.distance = dist;
+        currentTitle = title;
+    }
+
+    private string CalculateImagePosition()
+    {
+        if (analysis.distance > 500)
+        {
+            return "left: 0px;";
+        }
+        else if (analysis.distance < 50)
+        {
+            return "right: 0px;";
+        }
+        else
+        {
+            double positionPercentage = (int)((analysis.distance - 50) / 400.0 * 70) + 1;
+            positionPercentage = Math.Min(positionPercentage, 70);
+            string pos = $"right: {positionPercentage}%";
+            return pos;
+        }
+    }
+}

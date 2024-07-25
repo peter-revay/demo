@@ -1,0 +1,37 @@
+﻿@page "/graph"
+@using LocationRisk.Components.Layout
+@rendermode InteractiveServer
+
+
+<PageTitle>Graph</PageTitle>
+
+
+<h3>Nadpis</h3>
+<br />
+
+    <img id="image" src="Images/Dom.svg" width="10%" />
+
+<GradientBar></GradientBar>
+<span>Popis pod grafom.</span>
+
+@code {
+    private int value = 50;
+    private Model.Home home;
+    
+    private string CalculateImagePosition()
+    {
+        if (Model.Home.Instance.Risk > 500)
+        {
+            return "right: 0px;";
+        }
+        else if (Model.Home.Instance.Risk < 50)
+        {
+            return "left: 0px;";
+        }
+        else
+        {
+            double positionPercentage = (Model.Home.Instance.Risk - 50) / 450.0;
+            return $"left: {(int)(positionPercentage * 100)}%;width:50px";
+        }
+    }
+}

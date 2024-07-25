@@ -1,0 +1,567 @@
+﻿@page "/"
+@using LocationRisk.Functions
+@using LocationRisk.Model
+@using Microsoft.Extensions.Logging
+@using System.ServiceModel
+@using System.Diagnostics
+@using Microsoft.AspNetCore.Components
+@rendermode InteractiveServer
+
+<PageTitle>Home</PageTitle>
+
+
+<h3>Voľba adresy</h3>
+<br />
+
+<!-- Input textbox for address -->
+<div class="container" style="margin-bottom:50px">
+    <div class="row">
+        <div class="col-6">
+            <div class="row">
+                <div class="column">
+                    <!-- Search input and button -->
+                    <input type="text" @bind="home.NewAddress" placeholder="Zadaj adresu" />
+                    <button class="btn btn-primary" @onclick="AddAddress">Potvrdiť adresu</button>
+                </div>
+            </div>
+            <br/>
+        <div class="row">
+            <div class="col-6">
+                    @if (home.PossibleLocations.Count() > 0)
+                    {
+                        selectedLocation = home.PossibleLocations.First().Address;
+                        <select @bind="selectedLocation">
+                            {
+                            @foreach (var location in home.PossibleLocations)
+                            {
+                                <option style="width:contain" value="@location.Address">@location.Address</option>
+                            }
+                            }
+                        </select>
+
+                        <button class="btn-light" @onclick="UpdateSelectedLocation">Select</button>
+                    }
+            </div>
+          
+            </div>
+        </div>
+        <div class="col-md-6 order-lg-1">
+            @if (home.Locations.Count > 0)
+            {
+                <div style="max-height:300px;max-width:800px;overflow-y:scroll;right:5;">
+                    <span>Použité adresy</span>
+                    <table>
+                        <tr>
+                            <th>Adresa</th>
+                            <th>Lat</th>
+                            <th>Lon</th>
+                        </tr>
+                        @foreach (var location in home.Locations)
+                        {
+                            <tr @onclick="() => SetMapCenter((double)location.Coordinates.Latitude, (double)location.Coordinates.Longitude)">
+                                <td>@location.Address</td>
+                                <td>@Double.Round((double)location.Coordinates.Latitude, 2)</td>
+                                <td>@Double.Round((double)location.Coordinates.Longitude, 2)</td>
+                            </tr>
+                        }
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+
+
+
+<br />
+
+<br />
+@if (!string.IsNullOrEmpty(@home.ErrorMessage))
+{
+    <p style="color: red;">@home.ErrorMessage</p>
+}
+
+@if (!string.IsNullOrEmpty(@home.Address))
+{
+
+    <p>Zvolená adresa: @home.Address</p>
+    <br />
+    <br />
+}
+<br />
+<Map @ref="home.MapRef" MapOptions="@mapOptions"></Map>
+
+<br />
+<p>
+    <label>
+        Uploadnut GeoJson subory:
+        <InputFile OnChange="HandleFileChange" accept=".geojson, .json" multiple />
+
+    </label>
+</p>
+
+
+<div class="modal" style="@((showDialog ? "display:block" : "display:none"))">
+    <div class="modal-fade">
+        <div class="modal-header">
+            <h5 style="color:white">Route Distance</h5>
+            <button class="btn-close-white" @onclick="Cancel"></button>
+        </div>
+        <div class="modal-body">
+            <p style="color:white"> Distance between points: @distance.ToString("F2") km</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-warning" @onclick="SaveRoute">Save Route</button>
+            <button class="btn-warning" @onclick="ShowOnOtherPage">Show on graph</button>
+            <button class="btn-danger" @onclick="Cancel">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" style="@((showDialogSaveRoute ? "display:block" : "display:none"))">
+    <div class="modal-fade">
+        <div class="modal-header">
+            <h5 style="color:white">Save Route</h5>
+            <button class="btn-close-white" @onclick="Cancel"></button>
+        </div>
+        <div class="modal-body">
+            <div>
+
+                <label for="title" style="color:white">Title:</label>
+                <input type="text" id="title" @bind="routeTitle" />
+                <br />
+                <label for="description" style="color:white">Description:</label>
+                <input type="text" id="description" @bind="routeDesc"></input>
+
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-warning" @onclick="SaveCompleteRoute">Save Route</button>
+            <button class="btn-danger" @onclick="Cancel">Cancel</button>
+        </div>
+    </div>
+</div>
+
+
+<br />
+@if (isLoading)
+{
+    <p>Uploading...</p>
+}
+else
+{
+    <ul>
+        @foreach (var file in loadedFiles)
+        {
+            <li>
+                <ul>
+                    <li>Subor s nazvom: @file.Name</li>
+                </ul>
+            </li>
+        }
+    </ul>
+}
+
+@if (home.Routes.Count() > 0)
+{
+    <div style="max-height:500px;max-width:800px;overflow-y:scroll;right:5px;margin-bottom:50px">
+        <caption>Vytvorene trasy</caption>
+        <table>
+            <tr>
+                <th style="margin:10px">Popis</th>
+                <th style="margin:10px">Nazov</th>
+                <th style="margin:10px">Vzdialenost</th>
+            </tr>
+            @foreach (var route in home.Routes)
+            {
+                <tr @onclick="async () => SetMapCenter((await route.Polygon.GetCenter()).Lat, (await route.Polygon.GetCenter()).Lng)">
+                    <td style="margin:10px"><span contenteditable="true" bind="@route.Text" @oninput="@((args) => UpdateText(route, args))">@route.Text</span></td>
+                    <td style="margin:10px">@route.Title</td>
+                    <td style="margin:10px">@Double.Round((double)route.Distance, 3)km</td>
+                    <button class="btn btn-success" style="margin:10px" @onclick="() => SaveRoute(route)">Ulozit do Databazy</button>
+                </tr>
+            }
+        </table>
+    </div>
+}
+
+<style>
+    #mapId {
+        height: 400px;
+    }
+</style>
+
+@code {
+    private Model.Home home = Model.Home.Instance;
+    private string selectedLocation;
+    private List<IBrowserFile> loadedFiles = new();
+    private long maxFileSize = 1024 * 15;
+    private int maxAllowedFiles = 100;
+    private bool isLoading;
+    bool showDialog = false;
+    bool showDialogSaveRoute = false;
+    double distance = 0.0;
+    Polygon currentPolygon = null;
+    string routeTitle;
+    string routeDesc;
+
+    [Inject]
+    private IMarkerFactory MarkerFactory { get; init; }
+    [Inject]
+    private IPolygonFactory PolygonFactory { get; init; }
+    [Inject]
+    private ICircleFactory CircleFactory { get; init; }
+    [Inject]
+    private IIconFactory IconFactory { get; init; }
+    @inject NavigationManager Navigation
+
+    [Inject] private IJSRuntime JS { get; set; }
+    
+
+
+    private void SaveRoute()
+    {
+        showDialog = false;
+        showDialogSaveRoute = true;
+        StateHasChanged();
+    }
+
+    private void SaveCompleteRoute()
+    {
+        showDialogSaveRoute = false;
+        home.Routes.Add(new Route { Distance = (double)distance, Polygon = currentPolygon, Text = routeDesc, Title = routeTitle });
+        StateHasChanged();
+    }
+
+    private void ShowOnOtherPage()
+    {
+        showDialog = false;
+        Model.Analysis.Instance.distance = (int)Math.Round(distance * 1000);
+        Navigation.NavigateTo("/analysis");
+    }
+
+    private void Cancel()
+    {
+        showDialog = false;
+        showDialogSaveRoute = false;
+        StateHasChanged();
+    }
+
+    private void UpdateText(Route route, ChangeEventArgs e)
+    {
+        var r = home.Routes.Where(x => x.Title == route.Title && x.Polygon == route.Polygon && route.Distance == x.Distance).FirstOrDefault();
+        if (r != null)
+        {
+            r.Text = (e.Value as string)?.Trim();
+        }
+    }
+    private async Task HandleFileChange(InputFileChangeEventArgs e)
+    {
+        foreach (var file in e.GetMultipleFiles(maxAllowedFiles))
+        {
+            isLoading = true;
+            using var stream = file.OpenReadStream();
+            var reader = new StreamReader(stream);
+
+            string x = null;
+            try
+            {
+                x = await reader.ReadToEndAsync();
+                var coordinates = await GeoJsonParser.ParseGeoJsonStringAsync(x);
+                if (coordinates != null && coordinates.Count > 0)
+                {
+                    AddPolygonToMap(coordinates, null);
+                }
+            }
+            catch (Exception ex)
+            {
+
+            }
+            isLoading = false;
+        }
+
+    }
+
+    private void SaveRoute(Route route)
+    {
+        int status = 3;
+        if (route.Distance > 0.5)
+        {
+            status = 2;
+        }
+        else if (route.Distance < 0.05)
+        {
+            status = 1;
+        }
+        LocationRisk.Functions.Database.SaveResult(status, route.Text, route.Title, (int)Math.Round(route.Distance * 1000), null);
+    }
+
+    private void UpdateSelectedLocation()
+    {
+        if (selectedLocation == null)
+        {
+            return;
+        }
+
+        Location location = home.PossibleLocations.Where(x => x.Address.Trim().Equals(selectedLocation.Trim())).FirstOrDefault();
+        if (location != null)
+        {
+            home.PossibleLocations = new();
+            selectedLocation = null;
+            AddressSelected(location.Coordinates, location.Address);
+        }
+    }
+
+    private async void AddressSelected(Coordinates coordinates, string address)
+    {
+        Marker marker = await this.MarkerFactory.CreateAndAddToMap(new LatLng((double)coordinates.Latitude, (double)coordinates.Longitude), this.home.MapRef);
+        marker.OnClick(async (MouseEvent mouseEvent) => await HandleMouseEvent(mouseEvent, marker));
+
+        home.Locations.Add(new Location { Address = address, Coordinates = coordinates, Marker = marker });
+
+        home.Markers.Add(marker);
+        SetMapCenter((double)coordinates.Latitude, (double)coordinates.Longitude);
+    }
+
+    private MapOptions mapOptions = new MapOptions()
+        {
+
+            DivId = "mapId",
+            Center = new LatLng(49.279133, 18.7),
+            Zoom = 11,
+            UrlTileLayer = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            SubOptions = new MapSubOptions()
+            {
+                Attribution = "&copy; <a lhref='http://www.openstreetmap.org/copyright'>OpenStreetMap</a>",
+                TileSize = 512,
+                ZoomOffset = -1,
+                MaxZoom = 19,
+            }
+        };
+
+    private void SetMapCenter(double lat, double lon)
+    {
+        mapOptions = new MapOptions()
+            {
+
+                DivId = "mapId",
+                Center = new LatLng(lat, lon),
+                Zoom = 11,
+                UrlTileLayer = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                SubOptions = new MapSubOptions()
+                {
+                    Attribution = "&copy; <a lhref='http://www.openstreetmap.org/copyright'>OpenStreetMap</a>",
+                    TileSize = 512,
+                    ZoomOffset = -1,
+                    MaxZoom = 19,
+                }
+            };
+        home.MapRef.SetView(new LatLng(lat, lon));
+        home.Address = null;
+        StateHasChanged();
+    }
+
+    private async Task AddMarkerWithOptions()
+    {
+        IconOptions iconOptions = new IconOptions()
+            {
+                IconUrl = "http://leafletjs.com/examples/custom-icons/leaf-green.png",
+                IconSize = new Point(38, 95),
+                IconAnchor = new Point(22, 94),
+                ShadowUrl = "http://leafletjs.com/examples/custom-icons/leaf-shadow.png",
+                ShadowSize = new Point(50, 64),
+                ShadowAnchor = new Point(4, 61),
+                PopupAnchor = new Point(-3, -76),
+            };
+
+        MarkerOptions markerOptions = new MarkerOptions()
+            {
+                Opacity = 0.5,
+                Draggable = true,
+                IconRef = await this.IconFactory.Create(iconOptions),
+            };
+
+        this.home.MarkerWithOptions = await this.MarkerFactory.CreateAndAddToMap(this.home.MarkerWithOptionsLatLng, this.home.MapRef, markerOptions);
+    }
+
+
+    private async void AddAddress()
+    {
+        if (string.IsNullOrWhiteSpace(home.NewAddress))
+        {
+            home.ErrorMessage = "Address cannot be empty.";
+            home.Address = null;
+        }
+        else
+        {
+            home.Address = home.NewAddress;
+            home.NewAddress = string.Empty;
+            home.ErrorMessage = string.Empty;
+
+            var coordinates = await GeocodeAddress(home.Address);
+            if (coordinates != null && coordinates.Latitude != null && coordinates.Longitude != null)
+            {
+                AddressSelected(coordinates, home.Address);
+            }
+
+        }
+    }
+
+    private void GetClosest(ServiceOpenStreetMap.GetClosestPointRequest request)
+    {
+        var result = LocationRisk.Services.ServiceAgent.Singleton.GetClosestPoint(request);
+
+        if (result.GetClosestPointResult != null)
+        {
+            AddPolygonToMap(new List<Coordinates> { new Coordinates { Latitude = result.closestPoint.Latitude, Longitude = result.closestPoint.Longitude }, new Coordinates { Latitude = request.coordinates.Latitude, Longitude = request.coordinates.Longitude } }, result.GetClosestPointResult);
+        }
+    }
+
+    private async Task HandleMouseEvent(MouseEvent mouseEvent, Object obj)
+    {
+      
+        if (home.Chosen != null)
+        {
+            if (obj is Marker && home.Chosen is Polygon)
+            {
+                var markerLoc = await ((Marker)home.Chosen).GetLatLng();
+                List<Coordinates> polygonLoc;
+                home.Polygons.TryGetValue((Polygon)home.Chosen, out polygonLoc);
+                if (polygonLoc != null)
+                {
+                    ServiceOpenStreetMap.GetClosestPointRequest r = new();
+                    r.coordinates = new ServiceOpenStreetMap.Coordinates { Latitude = markerLoc.Lat, Longitude = markerLoc.Lng };
+                    var others = new List<ServiceOpenStreetMap.Coordinates>();
+                    foreach (var c in polygonLoc)
+                    {
+                        others.Add(new ServiceOpenStreetMap.Coordinates { Latitude = (double)c.Latitude, Longitude = (double)c.Longitude });
+                    }
+                    r.others = others.ToArray();
+                    GetClosest(r);
+                }
+                home.Chosen = null;
+            }
+            else if (obj is Polygon && home.Chosen is Marker)
+            {
+                LatLng markerLoc = null;
+                try
+                {
+                    markerLoc = await ((Marker)home.Chosen).GetLatLng();
+                }
+                catch (Exception ex)
+                {
+
+                }
+                List<Coordinates> polygonLoc;
+                home.Polygons.TryGetValue((Polygon)obj, out polygonLoc);
+                if (polygonLoc != null)
+                {
+                    ServiceOpenStreetMap.GetClosestPointRequest r = new();
+                    r.coordinates = new ServiceOpenStreetMap.Coordinates { Latitude = markerLoc.Lat, Longitude = markerLoc.Lng };
+                    var others = new List<ServiceOpenStreetMap.Coordinates>();
+                    foreach (var c in polygonLoc)
+                    {
+                        others.Add(new ServiceOpenStreetMap.Coordinates { Latitude = (double)c.Latitude, Longitude = (double)c.Longitude });
+                    }
+                    r.others = others.ToArray();
+                    GetClosest(r);
+                }
+                home.Chosen = null;
+            }
+            else if (obj is Marker && home.Chosen is Marker)
+            {
+                LatLng markerLoc = null;
+                markerLoc = await ((Marker)home.Chosen).GetLatLng();
+
+                List<Coordinates> polygonLoc = new();
+                LatLng markerLoc2 = null;
+                markerLoc2 = await ((Marker)obj).GetLatLng();
+
+                polygonLoc.Add(new Coordinates { Latitude = markerLoc2.Lat, Longitude = markerLoc2.Lng });
+                if (polygonLoc != null)
+                {
+                    ServiceOpenStreetMap.GetClosestPointRequest r = new();
+                    r.coordinates = new ServiceOpenStreetMap.Coordinates { Latitude = markerLoc.Lat, Longitude = markerLoc.Lng };
+                    var others = new List<ServiceOpenStreetMap.Coordinates>();
+                    foreach (var c in polygonLoc)
+                    {
+                        others.Add(new ServiceOpenStreetMap.Coordinates { Latitude = (double)c.Latitude, Longitude = (double)c.Longitude });
+                    }
+                    r.others = others.ToArray();
+                    GetClosest(r);
+                }
+                home.Chosen = null;
+            }
+            else
+            {
+                home.Chosen = obj;
+            }
+        }
+        else
+        {
+            home.Chosen = obj;
+        }
+    }
+
+
+    private void ShowDistance(double distance)
+    {
+        JS.InvokeVoidAsync("alert", $"The distance is {distance:F2} km");
+    }
+
+    private async void AddPolygonToMap(List<Coordinates> coordinates, double? distance)
+    {
+        List<LatLng> coords = new List<LatLng>();
+        foreach (var c in coordinates)
+        {
+            coords.Add(new LatLng((double)c.Latitude, (double)c.Longitude));
+        }
+        Polygon polygon = await this.PolygonFactory.CreateAndAddToMap(coords, this.home.MapRef);
+        if (distance != null)
+        {
+            polygon.OnClick(async (MouseEvent mouseEvent) => ShowDistance((double)distance));
+
+            home.Risk = (int)Math.Round((double)distance * 1000);
+            this.distance = (double)distance;
+            showDialog = true;
+            StateHasChanged();
+            currentPolygon = polygon;
+
+        }
+        else
+        {
+            polygon.OnClick(async (MouseEvent mouseEvent) => await HandleMouseEvent(mouseEvent, polygon));
+        }
+        home.Polygons.Add(polygon, coordinates);
+    }
+
+    private async Task<Coordinates?> GeocodeAddress(string address)
+    {
+        try
+        {
+                var result = LocationRisk.Services.ServiceAgent.Singleton.GetCoordinates(address);
+                if (result != null && result.Count() > 0)
+                {
+                    foreach (var res in result)
+                    {
+                        home.PossibleLocations.Add(new Location { Address = res.DisplayName, Coordinates = new Coordinates { Latitude = res.Latitude, Longitude = res.Longitude } });
+                    }
+                    return null;
+                }
+                else
+                {
+                    home.ErrorMessage = "Unable to geocode the address.";
+                }
+        }
+        catch (Exception ex)
+        {
+            home.ErrorMessage = $"Error: {ex.Message}";
+        }
+
+        return null;
+    }
+
+}
+
+

@@ -1,0 +1,20 @@
+{
+  "Settings": {
+    "COMPANY_NAME": "Prima banka Slovensko, a.s.",
+    "COMPANY_ADDRESS": "Hodžova 11 010 11 Žilina",
+    "COMPANY_ICO": "31575951"
+  },
+  "Services": {
+    "SERVICE_OPENSTREETMAP_LIVE": "http://serout.dmz.pkb.sk/ServiceOpenStreetMap/ServiceOpenStreetMap.svc",
+    "SERVICE_OPENSTREETMAP_TEST": "http://serouttest.dmz.pkb.sk/ServiceOpenStreetMap_test/ServiceOpenStreetMap.svc",
+    "SERVICE_OPENSTREETMAP_LOCAL": "http://localhost:61076/ServiceOpenStreetMap.svc?wsdl"
+
+  },
+  "ConnectionStrings": {
+    "CS_BANKA_TEST": "Data Source=10.5.21.18,1433;Initial Catalog=BANKA;Integrated Security=True;Encrypt=False",
+    "CS_BANKA_LIVE": "Data Source=10.5.21.6,1433;Initial Catalog=BANKA;Integrated Security=True;Encrypt=False",
+
+    "CS_BANKA_PUB_LIVE": "Data Source=192.168.177.66,1433;Initial Catalog=BANKA;User ID=cop;Password=cop123;Encrypt=False",
+    "CS_BANKA_PUB_TEST": "Data Source=192.168.177.68,1433;Initial Catalog=BANKA;User ID=cop;Password=cop123;Encrypt=False"
+  }
+}
