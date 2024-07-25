@@ -8,6 +8,8 @@ builder.Services.AddRazorComponents()
 
 var app = builder.Build();
 
+//test demo
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
